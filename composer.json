@@ -1,0 +1,15 @@
+{
+  "name": "creonit/page-bundle",
+  "keywords": [
+    "creonit",
+    "symfony",
+    "bundle",
+    "page"
+  ],
+  "license": "GNU GPLv3",
+  "autoload": {
+    "psr-4": {
+      "Creonit\\PageBundle\\": ""
+    }
+  }
+}
