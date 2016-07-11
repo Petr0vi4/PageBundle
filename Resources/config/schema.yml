@@ -1,0 +1,38 @@
+config:
+    required: true
+
+database:
+    +:
+        name: default
+        namespace: Creonit\PageBundle\Model
+        defaultIdMethod: native
+
+    +vendor:
+        type: mysql
+        parameters:
+            Engine: InnoDB
+            Charset: utf8
+
+    +behavior:
+        - auto_add_pk
+
+    page:
+        link_id: - int > page.id
+        type: tinyint
+        slug: varchar(255)
+        uri: varchar(255)
+        title: text
+        menu_title: text
+        name: varchar(255)
+        content: text
+        meta_title: text
+        meta_description: text
+        meta_keywords: text
+        visible: bool = 1
+
+        +behavior:
+            - tree
+            - sortable: parent_id
+            - timestampable
+            - holder
+

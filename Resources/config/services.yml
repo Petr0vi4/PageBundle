@@ -1,0 +1,21 @@
+services:
+    creonit_admin.page_module:
+        class: Creonit\PageBundle\Admin\PageModule
+        tags: [{ name: creonit_admin.module }]
+
+
+    creonit.routing_loader:
+        class: Creonit\PageBundle\Routing\ExtraLoader
+        arguments: ['%creonit_page.controller%']
+        tags:
+          - {name: routing.loader}
+
+    creonit_page:
+        class: Creonit\PageBundle\CreonitPage
+        arguments:
+            -   '@service_container'
+            -   '@request_stack'
+            -   '@router'
+            -   cache_dir: '%kernel.cache_dir%'
+                matcher_cache_class: '%router.options.matcher.cache_class%'
+                generator_cache_class: '%router.options.generator.cache_class%'
