@@ -51,7 +51,7 @@ class PageTable extends TableComponent
      *      (type != 2 ? button('Добавить страницу', {size: 'xs', icon: 'file-text-o'}) | open('Page.PageEditor', {relation: _key}) : '')
      * ) }}
      * @col {{ name }}
-     * @col {{ url }}
+     * @col {{ url | raw }}
      * @col
      * {% if type %}
      *      {{ buttons(_visible() ~ _delete() ) }}
@@ -87,8 +87,11 @@ class PageTable extends TableComponent
     {
         switch($entity->getType()){
             case Page::TYPE_ROUTE:
-                $route = $this->container->get('router')->getRouteCollection()->get($entity->getName());
-                $data->set('url', $route->getPath());
+                if($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())){
+                    $data->set('url', $route->getPath());
+                }else{
+                    $data->set('url', '<mark>ошибка</mark>');
+                }
                 break;
             case Page::TYPE_PAGE:
             case Page::TYPE_LINK:

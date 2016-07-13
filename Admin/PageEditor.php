@@ -80,8 +80,11 @@ class PageEditor extends EditorComponent
 
         switch($entity->getType()){
             case Page::TYPE_ROUTE:
-                $route = $this->container->get('router')->getRouteCollection()->get($entity->getName());
-                $response->data->set('url', $route->getPath());
+                if($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())){
+                    $response->data->set('url', $route->getPath());
+                }else{
+                    $response->data->set('url', 'ошибка: системная страница отсутствует');
+                }
                 break;
             case Page::TYPE_PAGE:
                 $response->data->set('url', $entity->getUri() ?: $entity->getSlug());
