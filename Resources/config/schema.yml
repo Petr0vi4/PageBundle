@@ -24,7 +24,6 @@ database:
         title: text
         menu_title: text
         name: varchar(255)
-        content: text
         meta_title: text
         meta_description: text
         meta_keywords: text
@@ -35,4 +34,5 @@ database:
             - sortable: parent_id
             - timestampable
             - holder
+            - content
 
