@@ -41,6 +41,7 @@ class PageEditor extends EditorComponent
      * {% endif %}
      *
      * {% if type.value < 2 %}
+     *      {{ content_id | content | group('Содержание') }}
      *      <br>
      *      {{ (
      *          (((meta_title | text | group('Заголовок') | col(6)) ~ (meta_keywords | text | group('Ключи') | col(6))) | row) ~
