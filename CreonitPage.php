@@ -28,7 +28,6 @@ class CreonitPage
         $this->router = $router;
         $this->requestStack = $requestStack;
         $this->options = $options;
-
     }
 
     public function synchronizeRoutePages(){
