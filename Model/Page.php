@@ -23,6 +23,7 @@ class Page extends BasePage
     const TYPE_MENU = 3;
 
     public function getUrl(){
+
         if($this->slug){
             return (($this->parent_id and $parent = $this->getParent() and in_array($parent->getType(), [self::TYPE_PAGE, self::TYPE_ROUTE]))? $this->getParent()->getUrl() : '/') . $this->slug . '/';
         }else if($this->uri){

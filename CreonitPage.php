@@ -41,8 +41,10 @@ class CreonitPage
                 $page = new Page();
                 $page->setTitle($routeName);
                 $page->setName($routeName);
-                $page->save();
             }
+
+            $page->setUri($path);
+            $page->save();
 
             $pageIds[] = $page->getId();
         }
@@ -69,8 +71,7 @@ class CreonitPage
 
         $this->getActivePage();
 
-
-        if($rootPage = PageQuery::create()->findOneByName($pageName)){
+        if($pageName instanceof Page ? ($rootPage = $pageName) : ($rootPage = PageQuery::create()->findOneByName($pageName))){
 
             $routeCollection = $this->router->getRouteCollection();
 
@@ -132,9 +133,6 @@ class CreonitPage
         $title = '';
         $metaDescription = '';
         $metaKeywords = '';
-
-        dump($this->getActivePage());
-
 
         if($page = $this->getActivePage()){
             $title = $page->getMetaTitle() ?: $page->getTitle();

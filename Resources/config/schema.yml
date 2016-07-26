@@ -17,7 +17,7 @@ database:
         - auto_add_pk
 
     page:
-        link_id: - int > page.id
+        link_id: - int > page.id(setnull)
         type: tinyint
         slug: varchar(255)
         uri: varchar(255)

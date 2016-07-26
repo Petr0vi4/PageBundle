@@ -159,11 +159,11 @@ class PageEditor extends EditorComponent
 
 
     protected function normalizeUri($url){
-        $url = '/'.trim($url, '/').'/';
+        $url = '/'.trim($url, "/ \t").'/';
         return $url == '//' ? '/' : $url;
     }
 
     protected function normalizeSlug($url){
-        return trim($url, '/');
+        return trim($url, "/ \t");
     }
 }
