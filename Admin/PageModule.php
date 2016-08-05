@@ -6,9 +6,16 @@ use Creonit\AdminBundle\Module;
 
 class PageModule extends Module{
 
-    protected $icon = 'fa fa-file-text-o';
-    protected $title = 'Структура';
-    protected $template = '<div js-component="Page.PageTable"></div>';
+    protected function configure()
+    {
+        $this
+            ->setTitle('Структура')
+            ->setIcon('file-text-o')
+            ->setTemplate('PageTable')
+            ->setPermission('ROLE_ADMIN_PAGE')
+        ;
+    }
+
 
     public function initialize(){
         $this->addComponent(new PageEditor());
