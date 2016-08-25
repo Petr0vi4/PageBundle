@@ -128,6 +128,14 @@ class CreonitPage
         return $this->activePage;
     }
 
+    public function setActivePage(Page $page)
+    {
+        $this->activePage = $page;
+        if($this->activePage){
+            $this->activePages = $this->activePage->getParents(Page::PARENT_PKS | Page::INCLUDE_SELF);
+        }
+    }
+
     public function getHead(){
 
         $title = '';
