@@ -21,7 +21,11 @@ class CreonitPage
     protected $activePage;
     protected $activePages = [];
 
-    
+    protected $metaTitle;
+    protected $metaDescription;
+    protected $metaKeywords;
+
+
     public function __construct(ContainerInterface $container, RequestStack $requestStack, Router $router, $options = [])
     {
         $this->container = $container;
@@ -139,22 +143,57 @@ class CreonitPage
     public function getHead(){
 
         $title = '';
-        $metaDescription = '';
-        $metaKeywords = '';
+        $description = '';
+        $keywords = '';
 
         if($page = $this->getActivePage()){
             $title = $page->getMetaTitle() ?: $page->getTitle();
-            $metaDescription = $page->getMetaDescription();
-            $metaKeywords = $page->getMetaKeywords();
+            $description = $page->getMetaDescription();
+            $keywords = $page->getMetaKeywords();
         }
+
+        $title = $this->metaTitle ?: $title;
+        $description = $this->metaDescription ?: $description;
+        $keywords = $this->metaKeywords ?: $keywords;
+
 
         return "
             <title>{$title}</title>
             <meta name=\"title\" content=\"{$title}\" />
-            <meta name=\"keywords\" content=\"{$metaKeywords}\" />
-            <meta name=\"description\" content=\"{$metaDescription}\" />
+            <meta name=\"keywords\" content=\"{$description}\" />
+            <meta name=\"description\" content=\"{$keywords}\" />
         ";
 
+    }
+
+    /**
+     * @param mixed $metaTitle
+     * @return CreonitPage
+     */
+    public function setMetaTitle($metaTitle)
+    {
+        $this->metaTitle = $metaTitle;
+        return $this;
+    }
+
+    /**
+     * @param mixed $metaDescription
+     * @return CreonitPage
+     */
+    public function setMetaDescription($metaDescription)
+    {
+        $this->metaDescription = $metaDescription;
+        return $this;
+    }
+
+    /**
+     * @param mixed $metaKeywords
+     * @return CreonitPage
+     */
+    public function setMetaKeywords($metaKeywords)
+    {
+        $this->metaKeywords = $metaKeywords;
+        return $this;
     }
 
 }
