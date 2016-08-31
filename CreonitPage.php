@@ -8,6 +8,7 @@ use Propel\Runtime\ActiveQuery\Criteria;
 use Symfony\Bundle\FrameworkBundle\Routing\Router;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 
 class CreonitPage
 {
@@ -115,18 +116,25 @@ class CreonitPage
             return $this->activePage;
         }
 
-        $route = $this->router->matchRequest($this->requestStack->getMasterRequest());
+        try {
+            $route = $this->router->matchRequest($this->requestStack->getMasterRequest());
 
-        if(preg_match('/^_page_(\d+)$/', $route['_route'], $match)){
-            $this->activePage = PageQuery::create()->findPk($match[1]);
+            if (preg_match('/^_page_(\d+)$/', $route['_route'], $match)) {
+                $this->activePage = PageQuery::create()->findPk($match[1]);
 
-        }else{
-            $this->activePage = PageQuery::create()->findOneByName($route['_route']);
+            } else {
+                $this->activePage = PageQuery::create()->findOneByName($route['_route']);
 
+            }
+
+        }catch (ResourceNotFoundException $e){
+            // @todo pass not found Page
         }
 
         if($this->activePage){
             $this->activePages = $this->activePage->getParents(Page::PARENT_PKS | Page::INCLUDE_SELF);
+        }else{
+            $this->activePage = false;
         }
 
         return $this->activePage;
