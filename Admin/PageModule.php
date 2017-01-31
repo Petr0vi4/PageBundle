@@ -12,7 +12,6 @@ class PageModule extends Module{
             ->setTitle('Структура')
             ->setIcon('file-text-o')
             ->setTemplate('PageTable')
-            ->setPermission('ROLE_ADMIN_PAGE')
         ;
     }
 
