@@ -6,7 +6,7 @@
     "bundle",
     "page"
   ],
-  "license": "GPL-3.0",
+  "license": "GPL-3.0-only",
   "autoload": {
     "psr-4": {
       "Creonit\\PageBundle\\": ""
