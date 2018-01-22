@@ -29,6 +29,7 @@ database:
         meta_description: text
         meta_keywords: text
         visible: bool = 1
+        hide: bool = 0
 
         +behavior:
             - tree

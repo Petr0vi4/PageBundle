@@ -18,7 +18,7 @@ class PageQuery extends BasePageQuery
 {
 
     public function forList(){
-        return $this->filterByVisible(true)->orderByRank();
+        return $this->filterByVisible(true)->filterByHide(false)->orderByRank();
     }
 
 }

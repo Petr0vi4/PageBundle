@@ -40,6 +40,8 @@ class PageEditor extends EditorComponent
      *      {{ name | text | group('Идентификатор') }}
      * {% endif %}
      *
+     * {{ hide | checkbox('Не показывать в меню') | group }}
+     *
      * {% if type.value < 2 %}
      *      {{ content_id | content | group('Содержание') }}
      *      <br>
