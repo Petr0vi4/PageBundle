@@ -24,6 +24,8 @@ class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
                 ->scalarNode('controller')->isRequired()->end()
+                ->scalarNode('ignore_route')->end()
+                ->scalarNode('ignore_path')->end()
             ->end();
 
         return $treeBuilder;

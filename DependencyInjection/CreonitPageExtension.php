@@ -24,6 +24,8 @@ class CreonitPageExtension extends Extension
         $config = $this->processConfiguration($configuration, $configs);
 
         $container->setParameter('creonit_page.controller', $config['controller']);
+        $container->setParameter('creonit_page.ignore_route', isset($config['ignore_route']) ? $config['ignore_route'] : '');
+        $container->setParameter('creonit_page.ignore_path', isset($config['ignore_path']) ? $config['ignore_path'] : '');
 
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yml');

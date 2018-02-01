@@ -36,16 +36,29 @@ class CreonitPage
     }
 
     public function synchronizeRoutePages(){
+        if($ignoreRoute = $this->container->getParameter('creonit_page.ignore_route')){
+            $ignoreRoute = str_replace('/', '\/', $ignoreRoute);
+        }
+        if($ignorePath = $this->container->getParameter('creonit_page.ignore_path')){
+            $ignorePath = str_replace('/', '\/', $ignorePath);
+        }
+
         $pageIds = [];
         foreach($this->router->getRouteCollection()->all() as $routeName => $route){
             if(!$path = $route->getPath()) continue;
             if($routeName[0] == '_') continue;
             if($methods = $route->getMethods() and !in_array('GET', $methods)) continue;
+            if($ignoreRoute and preg_match('/' . $ignoreRoute . '/usi', $routeName)) continue;
+            if($ignorePath and preg_match('/' . $ignorePath . '/usi', $path)) continue;
 
             if(!$page = PageQuery::create()->findOneByName($routeName)){
                 $page = new Page();
                 $page->setTitle($routeName);
                 $page->setName($routeName);
+            }
+
+            if($page->getType() == Page::TYPE_PAGE){
+                $page->setType(Page::TYPE_ROUTE);
             }
 
             $page->setUri($path);
@@ -54,7 +67,7 @@ class CreonitPage
             $pageIds[] = $page->getId();
         }
 
-        PageQuery::create()->filterById($pageIds, Criteria::NOT_IN)->filterByType(Page::TYPE_ROUTE)->update(['Type' => Page::TYPE_PAGE, 'Name' => '']);
+        PageQuery::create()->filterById($pageIds, Criteria::NOT_IN)->filterByType(Page::TYPE_ROUTE)->update(['Type' => Page::TYPE_PAGE]);
     }
 
 

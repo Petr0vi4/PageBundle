@@ -6,7 +6,7 @@ services:
 
     creonit.routing_loader:
         class: Creonit\PageBundle\Routing\ExtraLoader
-        arguments: ['%creonit_page.controller%']
+        arguments: ['%creonit_page.controller%', '%creonit_page.ignore_route%', '%creonit_page.ignore_path%']
         tags:
           - {name: routing.loader}
 
