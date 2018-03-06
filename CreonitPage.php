@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Routing\Router;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 class CreonitPage
 {
@@ -91,8 +92,6 @@ class CreonitPage
 
         if($pageName instanceof Page ? ($rootPage = $pageName) : ($rootPage = PageQuery::create()->findOneByName($pageName))){
 
-            $routeCollection = $this->router->getRouteCollection();
-
             $children = [];
             foreach ($rootPage->getChildrenQuery(1)->filterByType(Page::TYPE_MENU, Criteria::NOT_EQUAL)->forList()->find() as $page) {
                 $child = [
@@ -100,8 +99,9 @@ class CreonitPage
                 ];
 
                 if($page->getType() == Page::TYPE_ROUTE){
-                    if($route = $routeCollection->get($page->getName())){
+                    try {
                         $child['url'] = $this->router->generate($page->getName());
+                    } catch (RouteNotFoundException $exception) {
                     }
 
                 }else{
