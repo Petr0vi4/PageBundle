@@ -8,6 +8,8 @@ use Creonit\AdminBundle\Component\Response\ComponentResponse;
 use Creonit\AdminBundle\Component\Scope\Scope;
 use Creonit\AdminBundle\Component\TableComponent;
 use Creonit\PageBundle\Model\Page;
+use Creonit\PageBundle\Model\PageQuery;
+use Propel\Runtime\ActiveQuery\Criteria;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
 class PageTable extends TableComponent
@@ -23,6 +25,11 @@ class PageTable extends TableComponent
      *      this.request('synchronize', {}, {}, function(){
      *          alert('Синхронизация прошла успешно');
      *      });
+     *      this.loadData();
+     * }
+     * @action copy(options){
+     *      var $row = this.findRowById(options.rowId);
+     *      this.request('copy', $.extend({page_id: options.key}, this.getQuery()), {state: $row.hasClass('success')});
      *      this.loadData();
      * }
      *
@@ -54,9 +61,9 @@ class PageTable extends TableComponent
      * @col {{ url | raw }}
      * @col
      * {% if type %}
-     *      {{ buttons(_visible() ~ _delete() ) }}
+     *      {{ buttons(_visible() ~ _delete() ~ button('', {icon: 'clone', size: 'xs'})  | action('copy', {key: _key, rowId: _row_id}) ) }}
      * {% else %}
-     *      {{ buttons(_visible() ~ button('', {icon: 'remove', size: 'xs', disabled: true}) ) }}
+     *      {{ buttons(_visible() ~ button('', {icon: 'remove', size: 'xs', disabled: true}) ~ button('', {icon: 'clone', size: 'xs'})  | action('copy', {key: _key, rowId: _row_id}) ) }}
      * {% endif %}
      *
      *
@@ -66,6 +73,27 @@ class PageTable extends TableComponent
     {
 
         $this->setHandler('synchronize', function($request, $response){
+            $page = $this->container->get('creonit_page');
+            $page->synchronizeRoutePages();
+            $page->clearCache();
+        });
+
+        $this->setHandler('copy', function (ComponentRequest $request, ComponentResponse $response) {
+            $page = PageQuery::create()->findPk($request->query->get('page_id')) or $response->flushError('Страница не найдена');
+            $unicalCounterName = PageQuery::create()->filterByName("%" . $page->getName() . "%", Criteria::LIKE)->count();
+            $unicalCounterSlug = PageQuery::create()->filterBySlug("%" . $page->getSlug() . "%", Criteria::LIKE)->count();
+
+            $copiedPage = $page->copy(true);
+            $copiedPage
+                ->setTitle($page->getTitle() .' (Копия)')
+                ->setName($page->getName() . ($page->getName() ? ($unicalCounterName == 1 ? '_copy' : '_copy' . $unicalCounterName) : ''))
+                ->setSlug($page->getSlug() . ($page->getSlug() ? ($unicalCounterSlug == 1 ? '_copy' : '_copy' . $unicalCounterSlug) : ''))
+                ->setUri(preg_replace('/\\/$/', '_copy/', $page->getUri()))
+                ->setVisible(false)
+                ->save()
+            ;
+
+
             $page = $this->container->get('creonit_page');
             $page->synchronizeRoutePages();
             $page->clearCache();
