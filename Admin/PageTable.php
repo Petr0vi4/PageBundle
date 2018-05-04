@@ -57,7 +57,7 @@ class PageTable extends TableComponent
      *
      * {{ title | icon(icon) | open('Page.PageEditor', {key: _key}) | controls(
      *      (type != 2 ? button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('Page.PageEditor', {relation: _key}) : '') ~ ' ' ~
-     *      button('', {size: 'xs', icon: 'copy'}) | tooltip('Клонировать') | action('copy', {key: _key, rowId: _row_id})
+     *      (type == 1 ? button('', {size: 'xs', icon: 'copy'}) | tooltip('Клонировать') | action('copy', {key: _key, rowId: _row_id}) : '')
      * ) }}
      * @col {{ name }}
      * @col {{ url | raw }}
@@ -111,6 +111,7 @@ class PageTable extends TableComponent
 
             $pageClone = $page->copy();
             $pageClone
+                ->insertAtRank($page->getRank() + 1)
                 ->setContentId($newContentId)
                 ->setName($page->getName() . ($page->getName() ? ($unicalCounterName == 1 ? '_copy' : '_copy' . $unicalCounterName) : ''))
                 ->setSlug($page->getSlug() . ($page->getSlug() ? ($unicalCounterSlug == 1 ? '_copy' : '_copy' . $unicalCounterSlug) : ''))
