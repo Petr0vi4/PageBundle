@@ -7,6 +7,7 @@ use Creonit\AdminBundle\Component\Request\ComponentRequest;
 use Creonit\AdminBundle\Component\Response\ComponentResponse;
 use Creonit\AdminBundle\Component\Scope\Scope;
 use Creonit\AdminBundle\Component\TableComponent;
+use Creonit\ContentBundle\Model\Content;
 use Creonit\PageBundle\Model\Page;
 use Creonit\PageBundle\Model\PageQuery;
 use Propel\Runtime\ActiveQuery\Criteria;
@@ -55,15 +56,16 @@ class PageTable extends TableComponent
      * {% endif %}
      *
      * {{ title | icon(icon) | open('Page.PageEditor', {key: _key}) | controls(
-     *      (type != 2 ? button('Добавить страницу', {size: 'xs', icon: 'file-text-o'}) | open('Page.PageEditor', {relation: _key}) : '')
+     *      (type != 2 ? button('Добавить страницу', {size: 'xs', icon: 'file-text-o'}) | open('Page.PageEditor', {relation: _key}) : '') ~ ' ' ~
+     *      button('Клонировать', {size: 'xs', icon: 'copy'}) | action('copy', {key: _key, rowId: _row_id})
      * ) }}
      * @col {{ name }}
      * @col {{ url | raw }}
      * @col
      * {% if type %}
-     *      {{ buttons(_visible() ~ _delete() ~ button('', {icon: 'clone', size: 'xs'})  | action('copy', {key: _key, rowId: _row_id}) ) }}
+     *      {{ buttons(_visible() ~ _delete() ) }}
      * {% else %}
-     *      {{ buttons(_visible() ~ button('', {icon: 'remove', size: 'xs', disabled: true}) ~ button('', {icon: 'clone', size: 'xs'})  | action('copy', {key: _key, rowId: _row_id}) ) }}
+     *      {{ buttons(_visible() ~ button('', {icon: 'remove', size: 'xs', disabled: true}) ) }}
      * {% endif %}
      *
      *
@@ -71,35 +73,57 @@ class PageTable extends TableComponent
      */
     public function schema()
     {
-
-        $this->setHandler('synchronize', function($request, $response){
+        $this->setHandler('synchronize', function($request, $response) {
             $page = $this->container->get('creonit_page');
             $page->synchronizeRoutePages();
             $page->clearCache();
         });
 
-        $this->setHandler('copy', function (ComponentRequest $request, ComponentResponse $response) {
+        $this->setHandler('copy', function(ComponentRequest $request, ComponentResponse $response) {
             $page = PageQuery::create()->findPk($request->query->get('page_id')) or $response->flushError('Страница не найдена');
             $unicalCounterName = PageQuery::create()->filterByName("%" . $page->getName() . "%", Criteria::LIKE)->count();
             $unicalCounterSlug = PageQuery::create()->filterBySlug("%" . $page->getSlug() . "%", Criteria::LIKE)->count();
 
-            $copiedPage = $page->copy(true);
-            $copiedPage
-                ->setTitle($page->getTitle() .' (Копия)')
+            $content = $page->getContent();
+            $newContent = new Content();
+            $newContent
+                ->setText($content->getText())
+                ->setCompleted($content->getCompleted())
+                ->setCreatedAt($content->getCreatedAt())
+                ->setUpdatedAt($content->getUpdatedAt());
+
+            $deepCopy = true;
+            if ($deepCopy) {
+                $newContent->setNew(false);
+                foreach ($content->getContentBlocks() as $relObj) {
+                    if ($relObj !== $content) {
+                        $newContent->addContentBlock($relObj->copy($deepCopy));
+                    }
+                }
+            }
+            $newContent
+                ->setNew(true)
+                ->setId(null)
+                ->setCompleted(1)
+                ->save();
+
+            $pageClone = $page->copy(true);
+            $pageClone
+                ->setContentId($newContent->getId())
                 ->setName($page->getName() . ($page->getName() ? ($unicalCounterName == 1 ? '_copy' : '_copy' . $unicalCounterName) : ''))
                 ->setSlug($page->getSlug() . ($page->getSlug() ? ($unicalCounterSlug == 1 ? '_copy' : '_copy' . $unicalCounterSlug) : ''))
                 ->setUri(preg_replace('/\\/$/', '_copy/', $page->getUri()))
                 ->setVisible(false)
-                ->save()
-            ;
-
+                ->setTitle($page->getTitle() . ' (Копия)')
+                ->save();
 
             $page = $this->container->get('creonit_page');
             $page->synchronizeRoutePages();
             $page->clearCache();
         });
-        
+
     }
+
 
     /**
      * @param ComponentRequest $request
@@ -113,11 +137,11 @@ class PageTable extends TableComponent
      */
     protected function decorate(ComponentRequest $request, ComponentResponse $response, ParameterBag $data, $entity, Scope $scope, $relation, $relationValue, $level)
     {
-        switch($entity->getType()){
+        switch ($entity->getType()) {
             case Page::TYPE_ROUTE:
-                if($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())){
+                if ($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())) {
                     $data->set('url', $route->getPath());
-                }else{
+                } else {
                     $data->set('url', '<mark>ошибка</mark>');
                 }
                 break;
