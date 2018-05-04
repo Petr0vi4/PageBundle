@@ -56,8 +56,8 @@ class PageTable extends TableComponent
      * {% endif %}
      *
      * {{ title | icon(icon) | open('Page.PageEditor', {key: _key}) | controls(
-     *      (type != 2 ? button('Добавить страницу', {size: 'xs', icon: 'file-text-o'}) | open('Page.PageEditor', {relation: _key}) : '') ~ ' ' ~
-     *      button('Клонировать', {size: 'xs', icon: 'copy'}) | action('copy', {key: _key, rowId: _row_id})
+     *      (type != 2 ? button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('Page.PageEditor', {relation: _key}) : '') ~ ' ' ~
+     *      button('', {size: 'xs', icon: 'copy'}) | tooltip('Клонировать') | action('copy', {key: _key, rowId: _row_id})
      * ) }}
      * @col {{ name }}
      * @col {{ url | raw }}
@@ -85,31 +85,33 @@ class PageTable extends TableComponent
             $unicalCounterSlug = PageQuery::create()->filterBySlug("%" . $page->getSlug() . "%", Criteria::LIKE)->count();
 
             $content = $page->getContent();
-            $newContent = new Content();
-            $newContent
-                ->setText($content->getText())
-                ->setCompleted($content->getCompleted())
-                ->setCreatedAt($content->getCreatedAt())
-                ->setUpdatedAt($content->getUpdatedAt());
+            $newContentId = null;
+            if ($content) {
+                $newContent = new Content();
+                $newContent
+                    ->save();
+                $newContent
+                    ->setText($content->getText())
+                    ->setCompleted($content->getCompleted())
+                    ->setCreatedAt($content->getCreatedAt())
+                    ->setUpdatedAt($content->getUpdatedAt());
 
-            $deepCopy = true;
-            if ($deepCopy) {
                 $newContent->setNew(false);
                 foreach ($content->getContentBlocks() as $relObj) {
                     if ($relObj !== $content) {
-                        $newContent->addContentBlock($relObj->copy($deepCopy));
+                        $newContent->addContentBlock($relObj->copy(true));
                     }
                 }
-            }
-            $newContent
-                ->setNew(true)
-                ->setId(null)
-                ->setCompleted(1)
-                ->save();
 
-            $pageClone = $page->copy(true);
+                $newContent
+                    ->save();
+
+                $newContentId = $newContent->getId();
+            }
+
+            $pageClone = $page->copy();
             $pageClone
-                ->setContentId($newContent->getId())
+                ->setContentId($newContentId)
                 ->setName($page->getName() . ($page->getName() ? ($unicalCounterName == 1 ? '_copy' : '_copy' . $unicalCounterName) : ''))
                 ->setSlug($page->getSlug() . ($page->getSlug() ? ($unicalCounterSlug == 1 ? '_copy' : '_copy' . $unicalCounterSlug) : ''))
                 ->setUri(preg_replace('/\\/$/', '_copy/', $page->getUri()))
