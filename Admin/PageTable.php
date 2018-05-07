@@ -7,7 +7,10 @@ use Creonit\AdminBundle\Component\Request\ComponentRequest;
 use Creonit\AdminBundle\Component\Response\ComponentResponse;
 use Creonit\AdminBundle\Component\Scope\Scope;
 use Creonit\AdminBundle\Component\TableComponent;
+use Creonit\ContentBundle\Model\Content;
 use Creonit\PageBundle\Model\Page;
+use Creonit\PageBundle\Model\PageQuery;
+use Propel\Runtime\ActiveQuery\Criteria;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
 class PageTable extends TableComponent
@@ -23,6 +26,11 @@ class PageTable extends TableComponent
      *      this.request('synchronize', {}, {}, function(){
      *          alert('Синхронизация прошла успешно');
      *      });
+     *      this.loadData();
+     * }
+     * @action copy(options){
+     *      var $row = this.findRowById(options.rowId);
+     *      this.request('copy', $.extend({page_id: options.key}, this.getQuery()), {state: $row.hasClass('success')});
      *      this.loadData();
      * }
      *
@@ -48,7 +56,8 @@ class PageTable extends TableComponent
      * {% endif %}
      *
      * {{ title | icon(icon) | open('Page.PageEditor', {key: _key}) | controls(
-     *      (type != 2 ? button('Добавить страницу', {size: 'xs', icon: 'file-text-o'}) | open('Page.PageEditor', {relation: _key}) : '')
+     *      (type != 2 ? button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('Page.PageEditor', {relation: _key}) : '') ~ ' ' ~
+     *      (type == 1 ? button('', {size: 'xs', icon: 'copy'}) | tooltip('Клонировать') | action('copy', {key: _key, rowId: _row_id}) : '')
      * ) }}
      * @col {{ name }}
      * @col {{ url | raw }}
@@ -64,14 +73,60 @@ class PageTable extends TableComponent
      */
     public function schema()
     {
-
-        $this->setHandler('synchronize', function($request, $response){
+        $this->setHandler('synchronize', function($request, $response) {
             $page = $this->container->get('creonit_page');
             $page->synchronizeRoutePages();
             $page->clearCache();
         });
-        
+
+        $this->setHandler('copy', function(ComponentRequest $request, ComponentResponse $response) {
+            $page = PageQuery::create()->findPk($request->query->get('page_id')) or $response->flushError('Страница не найдена');
+            $unicalCounterName = PageQuery::create()->filterByName("%" . $page->getName() . "%", Criteria::LIKE)->count();
+            $unicalCounterSlug = PageQuery::create()->filterBySlug("%" . $page->getSlug() . "%", Criteria::LIKE)->count();
+
+            $content = $page->getContent();
+            $newContentId = null;
+            if ($content) {
+                $newContent = new Content();
+                $newContent
+                    ->save();
+                $newContent
+                    ->setText($content->getText())
+                    ->setCompleted($content->getCompleted())
+                    ->setCreatedAt($content->getCreatedAt())
+                    ->setUpdatedAt($content->getUpdatedAt());
+
+                $newContent->setNew(false);
+                foreach ($content->getContentBlocks() as $relObj) {
+                    if ($relObj !== $content) {
+                        $newContent->addContentBlock($relObj->copy(true));
+                    }
+                }
+
+                $newContent
+                    ->save();
+
+                $newContentId = $newContent->getId();
+            }
+
+            $pageClone = $page->copy();
+            $pageClone
+                ->insertAtRank($page->getRank() + 1)
+                ->setContentId($newContentId)
+                ->setName($page->getName() . ($page->getName() ? ($unicalCounterName == 1 ? '_copy' : '_copy' . $unicalCounterName) : ''))
+                ->setSlug($page->getSlug() . ($page->getSlug() ? ($unicalCounterSlug == 1 ? '_copy' : '_copy' . $unicalCounterSlug) : ''))
+                ->setUri(preg_replace('/\\/$/', '_copy/', $page->getUri()))
+                ->setVisible(false)
+                ->setTitle($page->getTitle() . ' (Копия)')
+                ->save();
+
+            $page = $this->container->get('creonit_page');
+            $page->synchronizeRoutePages();
+            $page->clearCache();
+        });
+
     }
+
 
     /**
      * @param ComponentRequest $request
@@ -85,11 +140,11 @@ class PageTable extends TableComponent
      */
     protected function decorate(ComponentRequest $request, ComponentResponse $response, ParameterBag $data, $entity, Scope $scope, $relation, $relationValue, $level)
     {
-        switch($entity->getType()){
+        switch ($entity->getType()) {
             case Page::TYPE_ROUTE:
-                if($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())){
+                if ($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())) {
                     $data->set('url', $route->getPath());
-                }else{
+                } else {
                     $data->set('url', '<mark>ошибка</mark>');
                 }
                 break;
