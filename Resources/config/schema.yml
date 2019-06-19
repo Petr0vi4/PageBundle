@@ -24,12 +24,12 @@ database:
         uri: varchar(255)
         title: text
         menu_title: text
-        name: varchar(255)
+        name: varchar(255) key(64)
         meta_title: text
         meta_description: text
         meta_keywords: text
-        visible: bool = 1
-        hide: bool = 0
+        visible: bool = 1 key
+        hide: bool = 0 key
 
         +behavior:
             - tree
@@ -38,3 +38,7 @@ database:
             - holder
             - content
 
+        +index:
+            - level
+            - path(32)
+            - sortable_rank

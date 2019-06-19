@@ -95,7 +95,9 @@ class CreonitPage
             $children = [];
             foreach ($rootPage->getChildrenQuery(1)->filterByType(Page::TYPE_MENU, Criteria::NOT_EQUAL)->forList()->find() as $page) {
                 $child = [
+                    'id' => $page->getId(),
                     'title' => $page->getTitle(),
+                    'name' => $page->getName(),
                 ];
 
                 if($page->getType() == Page::TYPE_ROUTE){
