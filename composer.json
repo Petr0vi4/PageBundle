@@ -15,7 +15,7 @@
   "require": {
     "creonit/propel-tree-behavior": "^0.1.0",
     "creonit/propel-holder-behavior": "^0.1.0",
-    "creonit/content-bundle": "^0.1.0",
+    "creonit/content-bundle": "~1.0",
     "creonit/propel-schema-converter-bundle": "^0.1.0|^0.2.0"
   }
 }

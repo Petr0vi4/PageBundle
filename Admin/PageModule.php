@@ -15,11 +15,11 @@ class PageModule extends Module{
         ;
     }
 
-
     public function initialize(){
         $this->addComponent(new PageEditor());
+        $this->addComponent(new PageSiteEditor());
+        $this->addComponent(new PageSiteTable());
         $this->addComponent(new PageTable());
         $this->addComponent(new ChoosePageTable());
     }
-
-} 
+}

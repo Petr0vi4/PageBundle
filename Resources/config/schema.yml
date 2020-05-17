@@ -16,15 +16,24 @@ database:
     +behavior:
         - auto_add_pk
 
+    page_site:
+        title: text
+        host: text
+        +behavior:
+            - sortable
+            - timestampable
+
     page:
         parent_id: - int > page.id(setnull)
         link_id: - int > page.id(setnull)
+        page_site_id: - int > page_site.id
         type: tinyint
         slug: varchar(255)
         uri: varchar(255)
         title: text
         menu_title: text
         name: varchar(255) key(64)
+        host: text
         meta_title: text
         meta_description: text
         meta_keywords: text
@@ -33,7 +42,7 @@ database:
 
         +behavior:
             - tree
-            - sortable: parent_id
+            - sortable: page_site_id,parent_id
             - timestampable
             - holder
             - content

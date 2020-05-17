@@ -1,21 +1,30 @@
 services:
-    creonit_admin.page_module:
-        class: Creonit\PageBundle\Admin\PageModule
-        tags: [{ name: creonit_admin.module }]
+    Creonit\PageBundle\Admin\PageModule:
+        tags:
+            - { name: creonit_admin.module }
 
-
-    creonit.routing_loader:
-        class: Creonit\PageBundle\Routing\ExtraLoader
+    Creonit\PageBundle\Routing\PageLoader:
         arguments: ['%creonit_page.controller%', '%creonit_page.ignore_route%', '%creonit_page.ignore_path%']
         tags:
-          - {name: routing.loader}
+            - { name: routing.loader }
+
+    Creonit\PageBundle\Service\HostResolver:
+        public: true
+        autowire: true
+
+    Creonit\PageBundle\Service\PageHostService:
+        public: true
+        arguments:
+            - '@router'
+
+    Creonit\PageBundle\Service\PageService:
+        public: true
+        arguments:
+            - '@router'
+            - '%kernel.cache_dir%'
+            - '%creonit_page.ignore_route%'
+            - '%creonit_page.ignore_path%'
 
     creonit_page:
-        class: Creonit\PageBundle\CreonitPage
-        arguments:
-            -   '@service_container'
-            -   '@request_stack'
-            -   '@router'
-            -   cache_dir: '%kernel.cache_dir%'
-                matcher_cache_class: '%router.options.matcher.cache_class%'
-                generator_cache_class: '%router.options.generator.cache_class%'
+        alias: Creonit\PageBundle\Service\PageService
+        public: true

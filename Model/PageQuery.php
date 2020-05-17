@@ -16,9 +16,8 @@ use Creonit\PageBundle\Model\Base\PageQuery as BasePageQuery;
  */
 class PageQuery extends BasePageQuery
 {
-
-    public function forList(){
+    public function forList()
+    {
         return $this->filterByVisible(true)->filterByHide(false)->orderByRank();
     }
-
 }

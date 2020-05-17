@@ -6,29 +6,33 @@ namespace Creonit\PageBundle\Admin;
 use Creonit\AdminBundle\Component\EditorComponent;
 use Creonit\AdminBundle\Component\Request\ComponentRequest;
 use Creonit\AdminBundle\Component\Response\ComponentResponse;
+use Creonit\PageBundle\Model\Map\PageTableMap;
 use Creonit\PageBundle\Model\Page;
+use Creonit\PageBundle\Service\PageHostService;
 
 class PageEditor extends EditorComponent
 {
-
+    /**
+     * @var bool
+     */
+    protected $needHostFixing;
 
     /**
      * @title Страница
      * @entity Creonit\PageBundle\Model\Page
      *
      * @field title {required: true}
-     * @field parent_id:external {title: 'entity.getParent().getTitle()'}
+     * @field parent:external
      * @field type:select {options: {1: 'Страница', 2: 'Ссылка', 3: 'Меню'}}
      *
      * @template
-     *
      * {% if type.value %}
      *      {{ type | select({reload: true}) | group('Тип') }}
      * {% else %}
      *      {{ url | raw | panel('warning', ('Системная страница <b>'~name~'</b>') | raw)}}
      * {% endif %}
      *
-     * {{ parent_id | external('Page.ChoosePageTable', {empty: 'Без родительской страницы', query: {page: _key} }) | group('Родительская страница') }}
+     * {{ parent | external('ChoosePageTable', {empty: 'Без родителя', query: {page: _key} }) | group('Родительский элемент') }}
      * {{ title | text | group('Заголовок') }}
      *
      * {% if type.value == 3 %}
@@ -51,22 +55,20 @@ class PageEditor extends EditorComponent
      *         ) | panel('default', 'Мета информация')
      *      }}
      * {% endif %}
-     *
-     *
      */
-    public function schema(){
+    public function schema()
+    {
     }
-
 
     protected function retrieveEntity(ComponentRequest $request, ComponentResponse $response)
     {
         $entity = parent::retrieveEntity($request, $response);
-        if($entity->isNew()){
-            $entity->setType(1);
+        if ($entity->isNew()) {
+            $entity->setType(Page::TYPE_PAGE);
         }
+
         return $entity;
     }
-
 
     /**
      * @param ComponentRequest $request
@@ -75,17 +77,27 @@ class PageEditor extends EditorComponent
      */
     public function decorate(ComponentRequest $request, ComponentResponse $response, $entity)
     {
-        if($relation = $request->query->get('relation')){
-            $field = $this->getField('parent_id');
-            $entity->setParentId($relation);
-            $response->data->set($field->getName(), $field->load($entity));
+        $parentField = $this->getField('parent');
+
+        if ($relation = $request->query->get('relation')) {
+            $this->resolveParent($entity, $relation);
         }
 
-        switch($entity->getType()){
+        if ($pageParent = $entity->getParent()) {
+            $response->data->set($parentField->getName(), ['value' => 'p_' . $pageParent->getId(), 'title' => $pageParent->getTitle()]);
+
+        } else if ($parentSite = $entity->getPageSite()) {
+            $response->data->set($parentField->getName(), ['value' => 's_' . $parentSite->getId(), 'title' => '[Сайт] ' . $parentSite->getTitle()]);
+
+        } else {
+            $response->data->set($parentField->getName(), ['value' => '', 'title' => 'Без родителя']);
+        }
+
+        switch ($entity->getType()) {
             case Page::TYPE_ROUTE:
-                if($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())){
+                if ($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())) {
                     $response->data->set('url', $route->getPath());
-                }else{
+                } else {
                     $response->data->set('url', 'ошибка: системная страница отсутствует');
                 }
                 break;
@@ -93,12 +105,10 @@ class PageEditor extends EditorComponent
                 $response->data->set('url', $entity->getUri() ?: $entity->getSlug());
                 $response->data->set('url_absolute', !!$entity->getUri());
                 break;
+            case Page::TYPE_MENU:
             case Page::TYPE_LINK:
                 break;
-            case Page::TYPE_MENU:
-                break;
         }
-
     }
 
     /**
@@ -108,13 +118,12 @@ class PageEditor extends EditorComponent
      */
     public function validate(ComponentRequest $request, ComponentResponse $response, $entity)
     {
-        switch($request->data->get('type')){
+        switch ($request->data->get('type')) {
+            case Page::TYPE_LINK:
             case Page::TYPE_PAGE:
                 break;
-            case Page::TYPE_LINK:
-                break;
             case Page::TYPE_MENU:
-                if(!$request->data->get('name')){
+                if (!$request->data->get('name')) {
                     $response->error('Заполните поле', 'name');
                 }
                 break;
@@ -128,14 +137,14 @@ class PageEditor extends EditorComponent
      */
     public function preSave(ComponentRequest $request, ComponentResponse $response, $entity)
     {
-        switch($entity->getType()){
+        switch ($entity->getType()) {
             case Page::TYPE_PAGE:
                 $entity->setSlug('');
                 $entity->setUri('');
-                if($url = $request->data->get('url')){
-                    if($request->data->has('url_absolute')){
+                if ($url = $request->data->get('url')) {
+                    if ($request->data->has('url_absolute')) {
                         $entity->setUri($this->normalizeUri($url));
-                    }else{
+                    } else {
                         $entity->setSlug($this->normalizeSlug($url));
                     }
                 }
@@ -150,22 +159,59 @@ class PageEditor extends EditorComponent
                 $entity->setSlug('');
                 break;
         }
+
+        $this->resolveParent($entity, $request->data->get('parent'));
+
+        if ($entity->isColumnModified(PageTableMap::COL_PARENT_ID) or $entity->isColumnModified(PageTableMap::COL_PAGE_SITE_ID)) {
+            $this->needHostFixing = true;
+        }
     }
 
-
+    /**
+     * @param ComponentRequest $request
+     * @param ComponentResponse $response
+     * @param Page $entity
+     */
     public function postSave(ComponentRequest $request, ComponentResponse $response, $entity)
     {
+        if ($this->needHostFixing === true) {
+            $this->container->get(PageHostService::class)->fixHostForPage($entity);
+        }
+
         $this->container->get('creonit_page')->clearCache();
     }
 
-
-
-    protected function normalizeUri($url){
-        $url = '/'.trim($url, "/ \t").'/';
+    protected function normalizeUri($url)
+    {
+        $url = '/' . trim($url, "/ \t") . '/';
         return $url == '//' ? '/' : $url;
     }
 
-    protected function normalizeSlug($url){
+    protected function normalizeSlug($url)
+    {
         return trim($url, "/ \t");
+    }
+
+    /**
+     * @param Page $entity
+     * @param $parentId
+     */
+    protected function resolveParent($entity, $parentId)
+    {
+        $entity->setPageSiteId(null);
+        $entity->setParentId(null);
+
+        if (!$parentId) {
+            return;
+        }
+
+        list($type, $id) = explode('_', $parentId);
+
+        if ($type == 'p') {
+            $entity->setParentId($id);
+
+        } else if ($type == 's') {
+            $entity->setPageSiteId($id);
+        }
     }
 }

@@ -2,41 +2,59 @@
 
 namespace Creonit\PageBundle\Admin;
 
-use Creonit\AdminBundle\Component\Pattern\ListPattern;
 use Creonit\AdminBundle\Component\Request\ComponentRequest;
 use Creonit\AdminBundle\Component\Response\ComponentResponse;
-use Creonit\AdminBundle\Component\Scope\Scope;
-use Creonit\AdminBundle\Component\TableComponent;
-use Creonit\ContentBundle\Model\Content;
-use Creonit\PageBundle\Model\Page;
-use Creonit\PageBundle\Model\PageQuery;
-use Propel\Runtime\ActiveQuery\Criteria;
-use Symfony\Component\HttpFoundation\ParameterBag;
+use Creonit\PageBundle\Service\PageHostService;
 
-class PageTable extends TableComponent
+class PageTable extends AbstractPageTable
 {
     /**
      * @title Список страниц
      * @header
-     * {{ button('Добавить страницу', {size: 'sm', icon: 'file-text-o', type: 'success'}) | open('Page.PageEditor') }}
-     * {{ button('Синхронизировать', {size: 'sm', icon: 'refresh'}) | action('synchronize') }}
-     * @cols Заголовок, Идентификатор, URL, .
+     * {{ button('Добавить страницу', {size: 'sm', icon: 'file-text-o', type: 'success'}) | open('PageEditor') }}
+     * {{ button('Управление сайтами', {size: 'sm', icon: 'globe'}) | open('PageSiteTable') }}
+     * {{ button('Обновить структуру', {size: 'sm', icon: 'refresh'}) | action('synchronize') }}
+     *
+     * @cols Страница, Идентификатор, URL, .
+     *
+     * @action openUrl(pageUrl){
+     *   window.open(pageUrl, '_blank');
+     * }
      *
      * @action synchronize(){
-     *      this.request('synchronize', {}, {}, function(){
-     *          alert('Синхронизация прошла успешно');
-     *      });
-     *      this.loadData();
+     *   this.node.find('.panel-heading .fa-refresh').addClass('fa-spin').closest('button').prop('disabled', true);
+     *   this.request('synchronize', {}, {}, function(){
+     *     alert('Структура обновлена');
+     *   });
+     *   this.loadData();
      * }
-     * @action copy(options){
-     *      var $row = this.findRowById(options.rowId);
-     *      this.request('copy', $.extend({page_id: options.key}, this.getQuery()), {state: $row.hasClass('success')});
-     *      this.loadData();
-     * }
+     *
+     * \Site
+     * @data []
+     * @col
+     * <div class="pull-right">
+     *   <div class="label label-default">{{ host }}</div>
+     * </div>
+     * <strong>
+     * {% if site_id %}
+     *   {{ title | icon('globe') | controls(button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('PageEditor', {relation: 's_' ~ site_id})) }}
+     * {% else %}
+     *   {{ title | icon('globe') | controls(_key == 'default'
+     *      ? button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('PageEditor')
+     *      : button('', {size: 'xs', icon: 'globe'}) | tooltip('Создать сайт для домена') | open('PageSiteEditor', {host: host}))
+     *   }}
+     * {% endif %}
+     * </strong>
+     *
+     * @col
+     * @col
+     * @col
      *
      * \Page
      * @entity Creonit\PageBundle\Model\Page
      * @relation parent_id > Page.id
+     * @relation relation_id > Site._key
+     * @independent true
      * @sortable true
      *
      * @field id
@@ -45,20 +63,10 @@ class PageTable extends TableComponent
      * @field type
      *
      * @col
-     * {% if type == 3 %}
-     *      {% set icon = 'bars' %}
-     * {% elseif type == 2 %}
-     *      {% set icon = 'share' %}
-     * {% elseif type == 1 %}
-     *      {% set icon = 'file-text-o' %}
-     * {% else %}
-     *      {% set icon = 'cog' %}
-     * {% endif %}
-     *
-     * {{ title | icon(icon) | open('Page.PageEditor', {key: _key}) | controls(
-     *      (type != 2 ? button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('Page.PageEditor', {relation: _key}) : '') ~ ' ' ~
-     *      (type == 1 ? button('', {size: 'xs', icon: 'copy'}) | tooltip('Клонировать') | action('copy', {key: _key, rowId: _row_id}) : '')
-     * ) }}
+     * {{ title | icon(icon) | open('PageEditor', {key: _key}) | controls(buttons(
+     *      (button('', {size: 'xs', icon: 'file-text-o'}) | tooltip('Добавить страницу') | open('PageEditor', {relation: 'p_' ~ _key}))
+     *      ~ (page_url ? button('', {size: 'xs', icon: 'external-link'}) | action('openUrl', page_url) : '')
+     * )) }}
      * @col {{ name }}
      * @col {{ url | raw }}
      * @col
@@ -67,96 +75,15 @@ class PageTable extends TableComponent
      * {% else %}
      *      {{ buttons(_visible() ~ button('', {icon: 'remove', size: 'xs', disabled: true}) ) }}
      * {% endif %}
-     *
-     *
-     *
      */
     public function schema()
     {
-        $this->setHandler('synchronize', function($request, $response) {
+        $this->setHandler('synchronize', function (ComponentRequest $request, ComponentResponse $response) {
+            @set_time_limit(0);
             $page = $this->container->get('creonit_page');
             $page->synchronizeRoutePages();
+            $this->container->get(PageHostService::class)->fixHostForAllPages();
             $page->clearCache();
         });
-
-        $this->setHandler('copy', function(ComponentRequest $request, ComponentResponse $response) {
-            $page = PageQuery::create()->findPk($request->query->get('page_id')) or $response->flushError('Страница не найдена');
-            $unicalCounterName = PageQuery::create()->filterByName("%" . $page->getName() . "%", Criteria::LIKE)->count();
-            $unicalCounterSlug = PageQuery::create()->filterBySlug("%" . $page->getSlug() . "%", Criteria::LIKE)->count();
-
-            $content = $page->getContent();
-            $newContentId = null;
-            if ($content) {
-                $newContent = new Content();
-                $newContent
-                    ->save();
-                $newContent
-                    ->setText($content->getText())
-                    ->setCompleted($content->getCompleted())
-                    ->setCreatedAt($content->getCreatedAt())
-                    ->setUpdatedAt($content->getUpdatedAt());
-
-                $newContent->setNew(false);
-                foreach ($content->getContentBlocks() as $relObj) {
-                    if ($relObj !== $content) {
-                        $newContent->addContentBlock($relObj->copy(true));
-                    }
-                }
-
-                $newContent
-                    ->save();
-
-                $newContentId = $newContent->getId();
-            }
-
-            $pageClone = $page->copy();
-            $pageClone
-                ->insertAtRank($page->getRank() + 1)
-                ->setContentId($newContentId)
-                ->setName($page->getName() . ($page->getName() ? ($unicalCounterName == 1 ? '_copy' : '_copy' . $unicalCounterName) : ''))
-                ->setSlug($page->getSlug() . ($page->getSlug() ? ($unicalCounterSlug == 1 ? '_copy' : '_copy' . $unicalCounterSlug) : ''))
-                ->setUri(preg_replace('/\\/$/', '_copy/', $page->getUri()))
-                ->setVisible(false)
-                ->setTitle($page->getTitle() . ' (Копия)')
-                ->save();
-
-            $page = $this->container->get('creonit_page');
-            $page->synchronizeRoutePages();
-            $page->clearCache();
-        });
-
     }
-
-
-    /**
-     * @param ComponentRequest $request
-     * @param ComponentResponse $response
-     * @param ParameterBag $data
-     * @param Page $entity
-     * @param Scope $scope
-     * @param $relation
-     * @param $relationValue
-     * @param $level
-     */
-    protected function decorate(ComponentRequest $request, ComponentResponse $response, ParameterBag $data, $entity, Scope $scope, $relation, $relationValue, $level)
-    {
-        switch ($entity->getType()) {
-            case Page::TYPE_ROUTE:
-                if ($route = $this->container->get('router')->getRouteCollection()->get($entity->getName())) {
-                    $data->set('url', $route->getPath());
-                } else {
-                    $data->set('url', '<mark>ошибка</mark>');
-                }
-                break;
-            case Page::TYPE_PAGE:
-            case Page::TYPE_LINK:
-                $data->set('url', $entity->getUrl());
-                break;
-            case Page::TYPE_MENU:
-                //$data->set('_row_class', 'info');
-                break;
-        }
-    }
-
-
 }

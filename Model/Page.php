@@ -3,6 +3,7 @@
 namespace Creonit\PageBundle\Model;
 
 use Creonit\PageBundle\Model\Base\Page as BasePage;
+use Propel\Runtime\Connection\ConnectionInterface;
 
 /**
  * Skeleton subclass for representing a row from the 'page' table.
@@ -16,21 +17,42 @@ use Creonit\PageBundle\Model\Base\Page as BasePage;
  */
 class Page extends BasePage
 {
-
     const TYPE_ROUTE = 0;
     const TYPE_PAGE = 1;
     const TYPE_LINK = 2;
     const TYPE_MENU = 3;
 
-    public function getUrl(){
+    public function getUrl()
+    {
 
-        if($this->slug){
-            return (($this->parent_id and $parent = $this->getParent() and in_array($parent->getType(), [self::TYPE_PAGE, self::TYPE_ROUTE]))? $this->getParent()->getUrl() : '/') . $this->slug . '/';
-        }else if($this->uri){
+        if ($this->slug) {
+            return (($this->parent_id and $parent = $this->getParent() and in_array($parent->getType(), [self::TYPE_PAGE, self::TYPE_ROUTE])) ? $this->getParent()->getUrl() : '/') . $this->slug . '/';
+
+        } else if ($this->uri) {
             return $this->uri;
-        }else{
+
+        } else {
             return '';
         }
     }
 
+    public function isTypeRoute()
+    {
+        return $this->type === static::TYPE_ROUTE;
+    }
+
+    public function isTypePage()
+    {
+        return $this->type === static::TYPE_PAGE;
+    }
+
+    public function isTypeLink()
+    {
+        return $this->type === static::TYPE_LINK;
+    }
+
+    public function isTypeMenu()
+    {
+        return $this->type === static::TYPE_MENU;
+    }
 }
