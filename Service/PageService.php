@@ -62,9 +62,19 @@ class PageService
 
     public function clearCache()
     {
-        $cacheFile = $this->cacheDir . '/' . $this->router->getOption('matcher_cache_class') . '.php';
-        if (is_file($cacheFile)) {
-            unlink($cacheFile);
+        $urlGeneratingRoutes = $this->cacheDir . '/url_generating_routes.php';
+        $urlMatchingRoutes = $this->cacheDir . '/url_matching_routes.php';
+
+        foreach ([$urlGeneratingRoutes, $urlMatchingRoutes] as $file) {
+            $metaFile = $file . '.meta';
+
+            if (is_file($metaFile)) {
+                @unlink($metaFile);
+            }
+
+            if (is_file($file)) {
+                @unlink($file);
+            }
         }
 
         return $this;
